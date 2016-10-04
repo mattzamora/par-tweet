@@ -1,10 +1,9 @@
 import tweepy
 import sqlite3
 import os.path
+import random
 
 def setup(sqlite_file = "TweetDB.sqlite"):
-
-    # TODO set up consuer_key, consumer_secret, access_token, access_token_secret
 
     is_existing_db = os.path.isfile(sqlite_file)
     conn = sqlite3.connect(sqlite_file)  # Creates a new file if there is none, otherwise opens an existing file.
@@ -12,7 +11,16 @@ def setup(sqlite_file = "TweetDB.sqlite"):
     cursor = conn.cursor()
 
     if not is_existing_db:
-        cursor.execute('''CREATE TABLE meta(consumer_key text, consumer_secret text, access_token text, access_token_secret text)''')
+        cursor.execute('''CREATE TABLE meta(consumer_key text, consumer_secret text, access_token text, access_token_secret text);''')
+
+        cursor.execute(
+            '''CREATE TABLE search_terms(search_term text);''')
+
+        starting_terms=['Leg Workout','total body workout']
+
+        for term in starting_terms:
+            command="insert into search_terms(search_term) values('%s');"%(term)
+            cursor.execute(command)
 
         keys_dict=load_external_api_keys()
         if not keys_dict:
@@ -24,16 +32,17 @@ def setup(sqlite_file = "TweetDB.sqlite"):
             access_token_secret = keys_dict['access_token_secret']
 
             cursor.execute("INSERT INTO meta(consumer_key, consumer_secret, access_token, access_token_secret) VALUES('%s','%s','%s','%s');"%(consumer_key, consumer_secret, access_token, access_token_secret))
-        api = False
     else:
         command="select * from meta;"
         a=cursor.execute(command)
         result=a.fetchone()
+
         consumer_key = result[0]
         consumer_secret = result[1]
         access_token = result[2]
         access_token_secret = result[3]
-        api = load_api(consumer_key, consumer_secret, access_token, access_token_secret)
+
+    api = load_api(consumer_key, consumer_secret, access_token, access_token_secret)
 
     return conn, cursor, api
 
@@ -69,12 +78,21 @@ def close(conn):
     conn.commit()
     conn.close()
 
+def select_term(cursor):
+    command="select * from search_terms;"
+    results = cursor.execute(command)
+    results = results.fetchall()
+    result = random.choice(results)
+    result = result[0]
+    return result
 
-def TEMP():
+def do_a_YouTube_Post(api, cursor):
     MIN_STATUSES = 1000
     MIN_FOLLOWERS = 1000
 
-    results = api.search(q="Leg Workout")
+    search_term = select_term(cursor)
+
+    results = api.search(q=search_term)
 
     for tweet in results:
         is_youtube_video = False
@@ -88,12 +106,14 @@ def TEMP():
             if len(current_urls)>0:
                 if u'expanded_url' in tweet.entities['urls'][0]:
                     #print tweet.entities['urls'][0]['expanded_url']
-                    if "youtube.com" in tweet.entities['urls'][0]['expanded_url']:
+                    exanded_urls=tweet.entities['urls'][0]['expanded_url']
+                    if "youtube.com" in exanded_urls or "youtu.be" in exanded_urls:
                         is_youtube_video = True
                     else:
-                        print("Other url")
+                        print("Other url: "+str(tweet.entities['urls'][0]['expanded_url']))
 
         if is_sizeable and is_youtube_video:
+            print("Initiating re-tweet")
             api.retweet(tweet.id)
 
     #print dir(results[0].user)
@@ -103,7 +123,17 @@ def TEMP():
     #print "followers_count: "+str(results[0].user.followers_count)
     #print "following: "+str(results[0].user.followers_ids)
 
+
+def follow_followers():
+    for follower in tweepy.Cursor(api.followers).items():
+        follower.follow()
+
 if __name__=="__main__":
     conn, cursor, api =setup()
-    print("Successful API Connection is "+str(api != False))
+    if api!=False:
+        print("Successful API Connection is "+str(api != False))
+        do_a_YouTube_Post(api, cursor)
+        follow_followers()
+    else:
+        raise Exception("API Connection is invalid")
     close(conn)
