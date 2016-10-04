@@ -113,8 +113,12 @@ def do_a_YouTube_Post(api, cursor):
                         print("Other url: "+str(tweet.entities['urls'][0]['expanded_url']))
 
         if is_sizeable and is_youtube_video:
-            print("Initiating re-tweet")
-            api.retweet(tweet.id)
+            if is_already_tweeted(tweet.id):
+                print("Passing a previously tweeted post")
+            else:
+                print("Initiating re-tweet")
+                add_tweeted_id(tweet.id)
+                api.retweet(tweet.id)
 
     #print dir(results[0].user)
     #print str(results[0].retweet_count)
@@ -123,6 +127,16 @@ def do_a_YouTube_Post(api, cursor):
     #print "followers_count: "+str(results[0].user.followers_count)
     #print "following: "+str(results[0].user.followers_ids)
 
+def add_tweeted_id(tweetID):
+    with open("tweetedIDs", "a") as myfile:
+        myfile.write(str(tweetID)+"\n")
+
+def is_already_tweeted(tweetID):
+    with open("tweetedIDs", "r") as myfile:
+        for line in myfile:
+            if line.strip()==str(tweetID):
+                return True
+        return False
 
 def follow_followers():
     for follower in tweepy.Cursor(api.followers).items():
