@@ -16,7 +16,8 @@ def setup(sqlite_file = "TweetDB.sqlite"):
         cursor.execute(
             '''CREATE TABLE search_terms(search_term text);''')
 
-        starting_terms=['Leg Workout','total body workout']
+        starting_terms=['Leg Workout','total body workout','fitness health motivation','active energy motivation',
+                        'fitfam','nutrition motivation','exercise training fitness']
 
         for term in starting_terms:
             command="insert into search_terms(search_term) values('%s');"%(term)
