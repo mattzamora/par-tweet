@@ -107,15 +107,18 @@ def do_a_YouTube_Post(api, cursor):
             if len(current_urls)>0:
                 if u'expanded_url' in tweet.entities['urls'][0]:
                     #print tweet.entities['urls'][0]['expanded_url']
-                    exanded_urls=tweet.entities['urls'][0]['expanded_url']
-                    if "youtube.com" in exanded_urls or "youtu.be" in exanded_urls:
+                    expanded_urls=tweet.entities['urls'][0]['expanded_url']
+                    if "youtube.com" in expanded_urls or "youtu.be" in expanded_urls:
                         is_youtube_video = True
+                        #raise Exception("url is "+str(exanded_urls))
                     else:
                         print("Other url: "+str(tweet.entities['urls'][0]['expanded_url']))
 
         if is_sizeable and is_youtube_video:
             if is_already_tweeted(tweet.id):
                 print("Passing a previously tweeted post")
+            elif is_already_used_video_url(expanded_urls):
+                print("Passing a previously posted Video URL")
             else:
                 print("Initiating re-tweet")
                 add_tweeted_id(tweet.id)
@@ -131,11 +134,21 @@ def do_a_YouTube_Post(api, cursor):
 def add_tweeted_id(tweetID):
     with open("tweetedIDs", "a") as myfile:
         myfile.write(str(tweetID)+"\n")
+def add_used_video(current_url):
+    with open("usedVideoURLS", "a") as myfile:
+        myfile.write(str(current_url)+"\n")
 
 def is_already_tweeted(tweetID):
     with open("tweetedIDs", "r") as myfile:
         for line in myfile:
             if line.strip()==str(tweetID):
+                return True
+        return False
+
+def is_already_used_video_url(current_url):
+    with open("usedVideoURLS", "r") as myfile:
+        for line in myfile:
+            if line.strip()==str(current_url):
                 return True
         return False
 
